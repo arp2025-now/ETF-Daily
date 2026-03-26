@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" dir="ltr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ETF Daily - AI-Powered Recommendations</title>
+  <link rel="stylesheet" href="etf-dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+</head>
+<body>
+  <header class="header">
+    <div class="header-left">
+      <div class="logo">
+        <span class="logo-icon">&#9670;</span>
+        <span class="logo-text">ETF Daily</span>
+      </div>
+      <span class="header-subtitle">AI-Powered Recommendations</span>
+    </div>
+    <div class="header-right">
+      <div class="market-status" id="marketStatus">
+        <span class="status-dot"></span>
+        <span class="status-text">Loading...</span>
+      </div>
+      <div class="header-date" id="headerDate"></div>
+      <button class="btn btn-refresh" id="refreshBtn" title="Refresh Data">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 2v6h-6M3 12a9 9 0 0 1 15-6.7L21 8M3 22v-6h6M21 12a9 9 0 0 1-15 6.7L3 16"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <main class="main">
+    <section class="summary-strip">
+      <div class="summary-card">
+        <span class="summary-label">ETFs Tracked</span>
+        <span class="summary-value" id="etfCount">--</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Avg Change</span>
+        <span class="summary-value" id="avgChange">--</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Buy Signals</span>
+        <span class="summary-value signal-buy" id="buyCount">--</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Hold Signals</span>
+        <span class="summary-value signal-hold" id="holdCount">--</span>
+      </div>
+      <div class="summary-card">
+        <span class="summary-label">Sell Signals</span>
+        <span class="summary-value signal-sell" id="sellCount">--</span>
+      </div>
+    </section>
+
+    <section class="etf-grid" id="etfGrid"></section>
+
+    <section class="charts-section">
+      <div class="chart-container">
+        <h3 class="section-title">Sector Performance</h3>
+        <canvas id="sectorChart"></canvas>
+      </div>
+      <div class="chart-container">
+        <h3 class="section-title">Daily Change Distribution</h3>
+        <canvas id="changeChart"></canvas>
+      </div>
+    </section>
+
+    <section class="ai-section">
+      <div class="ai-header">
+        <h3 class="section-title">AI Market Analysis</h3>
+        <button class="btn btn-ai" id="aiAnalysisBtn">Generate Analysis</button>
+      </div>
+      <div class="ai-content" id="aiContent">
+        <p class="ai-placeholder">Click "Generate Analysis" to get AI-powered market insights for today's ETF landscape.</p>
+      </div>
+    </section>
+
+    <section class="info-box rtl" dir="rtl">
+      <h3>&#128202; &#1502;&#1497;&#1491;&#1506; &#1506;&#1500; &#1492;&#1502;&#1506;&#1512;&#1499;&#1514;</h3>
+      <p>&#1491;&#1513;&#1489;&#1493;&#1512;&#1491; &#1494;&#1492; &#1502;&#1510;&#1497;&#1490; &#1492;&#1502;&#1500;&#1510;&#1493;&#1514; &#1497;&#1493;&#1502;&#1497;&#1493;&#1514; &#1500;&#1514;&#1506;&#1493;&#1491;&#1493;&#1514; &#1505;&#1500; (ETF) &#1492;&#1502;&#1489;&#1493;&#1505;&#1505;&#1493;&#1514; &#1506;&#1500; &#1504;&#1497;&#1514;&#1493;&#1495; &#1489;&#1497;&#1504;&#1492; &#1502;&#1500;&#1488;&#1499;&#1493;&#1514;&#1497;&#1514;. &#1492;&#1504;&#1514;&#1493;&#1504;&#1497;&#1501; &#1502;&#1514;&#1506;&#1491;&#1499;&#1504;&#1497;&#1501; &#1489;&#1494;&#1502;&#1503; &#1488;&#1502;&#1514; &#1502;-Finnhub &#1493;&#1492;&#1504;&#1497;&#1514;&#1493;&#1495; &#1502;&#1493;&#1508;&#1511; &#1489;&#1488;&#1502;&#1510;&#1506;&#1493;&#1514; Claude AI &#1513;&#1500; Anthropic.</p>
+      <p><strong>&#1513;&#1497;&#1502;&#1493; &#1500;&#1489;:</strong> &#1492;&#1502;&#1500;&#1510;&#1493;&#1514; &#1488;&#1500;&#1493; &#1488;&#1497;&#1504;&#1503; &#1502;&#1492;&#1493;&#1493;&#1514; &#1497;&#1497;&#1506;&#1493;&#1509; &#1492;&#1513;&#1511;&#1506;&#1493;&#1514;. &#1497;&#1513; &#1500;&#1492;&#1514;&#1497;&#1497;&#1506;&#1509; &#1506;&#1501; &#1497;&#1493;&#1506;&#1509; &#1502;&#1493;&#1505;&#1502;&#1498; &#1500;&#1508;&#1504;&#1497; &#1489;&#1497;&#1510;&#1493;&#1506; &#1492;&#1513;&#1511;&#1506;&#1493;&#1514;.</p>
+    </section>
+  </main>
+
+  <div class="loading-overlay" id="loadingOverlay">
+    <div class="spinner"></div>
+    <p>Loading ETF data...</p>
+  </div>
+
+  <footer class="footer">
+    <p>ETF Daily Dashboard - Data from Finnhub - AI by Anthropic Claude</p>
+  </footer>
+
+  <script src="etf-dashboard.js"></script>
+</body>
+</html>

@@ -99,10 +99,31 @@ app.post('/api/ai/market-analysis', async function(req, res) {
       return e.symbol+' ('+e.sector+'): $'+(e.price?e.price.toFixed(2):'N/A')+' | '+(e.changePercent>=0?'+':'')+(e.changePercent?e.changePercent.toFixed(2):'0.00')+'% | '+e.signal;
     }).join('\n');
     var text = await claude(
-      'You are a senior market strategist. Analyze ETF data with: 1) Market sentiment 2) Sector breakdown 3) Top picks 4) Risk factors 5) Summary. Use ### headers and bullets. Under 500 words. Date: '+today,
-      'ETF Data:\n'+summary+'\n\nProvide daily market analysis.'
+      'You are a senior market strategist. Write your analysis in Hebrew. Analyze ETF data with: 1) סנטימנט שוק 2) פירוט סקטורים 3) בחירות מובילות 4) גורמי סיכון 5) סיכום. Use ### headers and bullets. Under 500 words. Date: '+today,
+      'ETF Data:\n'+summary+'\n\nProvide daily market analysis in Hebrew.'
     );
     res.json({analysis:text});
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
+app.post('/api/ai/portfolio-allocation', async function(req, res) {
+  try {
+    var etfs = req.body.etfs;
+    var summary = etfs.map(function(e) {
+      return e.symbol+' ('+e.sector+'): $'+(e.price?e.price.toFixed(2):'N/A')+' | '+(e.changePercent>=0?'+':'')+(e.changePercent?e.changePercent.toFixed(2):'0.00')+'% | '+e.signal;
+    }).join('\n');
+    var text = await claude(
+      'You are a portfolio strategist specializing in high-growth ETFs. Given current market data, recommend a percentage allocation across these ETFs for a growth-oriented portfolio.\nRules:\n- Total must equal exactly 100%.\n- Each ETF gets 0-25% (no single ETF dominates).\n- Include a riskLevel field: "conservative", "moderate", or "aggressive".\n- Include a short rationale per ETF in Hebrew (one sentence).\n- Include a 2-3 sentence summary of overall strategy in Hebrew.\n- Respond ONLY with valid JSON, no markdown, no code fences. Format:\n{"allocation":[{"symbol":"...","sector":"...","percentage":N,"rationale":"..."}],"riskLevel":"...","summary":"..."}',
+      'ETF Data:\n'+summary+'\n\nProvide portfolio allocation as JSON.'
+    );
+    var parsed;
+    try { parsed = JSON.parse(text); }
+    catch(pe) {
+      var match = text.match(/\{[\s\S]*\}/);
+      if (match) parsed = JSON.parse(match[0]);
+      else throw new Error('Invalid JSON from AI');
+    }
+    res.json(parsed);
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 

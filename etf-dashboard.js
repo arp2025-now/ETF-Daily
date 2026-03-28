@@ -1,30 +1,41 @@
 var API_BASE = window.location.origin;
 var ETF_LIST = [
-  { symbol: 'SPY', name: 'S&P 500 ETF', sector: 'Broad Market' },
-  { symbol: 'QQQ', name: 'Nasdaq 100 ETF', sector: 'Technology' },
-  { symbol: 'IWM', name: 'Russell 2000 ETF', sector: 'Small Cap' },
-  { symbol: 'VTI', name: 'Total Stock Market ETF', sector: 'Broad Market' },
-  { symbol: 'XLF', name: 'Financial Select SPDR', sector: 'Financials' },
-  { symbol: 'XLE', name: 'Energy Select SPDR', sector: 'Energy' },
-  { symbol: 'XLK', name: 'Technology Select SPDR', sector: 'Technology' },
-  { symbol: 'XLV', name: 'Health Care Select SPDR', sector: 'Healthcare' },
-  { symbol: 'GLD', name: 'SPDR Gold Shares', sector: 'Commodities' },
-  { symbol: 'TLT', name: '20+ Year Treasury Bond', sector: 'Bonds' },
-  { symbol: 'VNQ', name: 'Real Estate ETF', sector: 'Real Estate' },
-  { symbol: 'EEM', name: 'Emerging Markets ETF', sector: 'International' }
+  { symbol: 'BOTZ', name: 'Global X Robotics & AI ETF', sector: 'AI & Robotics' },
+  { symbol: 'SOXX', name: 'iShares Semiconductor ETF', sector: 'Semiconductors' },
+  { symbol: 'SMH', name: 'VanEck Semiconductor ETF', sector: 'Semiconductors' },
+  { symbol: 'ARKK', name: 'ARK Innovation ETF', sector: 'Disruptive Innovation' },
+  { symbol: 'WCLD', name: 'WisdomTree Cloud Computing', sector: 'Cloud Computing' },
+  { symbol: 'CIBR', name: 'First Trust Cybersecurity ETF', sector: 'Cybersecurity' },
+  { symbol: 'HACK', name: 'ETFMG Prime Cyber Security', sector: 'Cybersecurity' },
+  { symbol: 'ARKG', name: 'ARK Genomic Revolution ETF', sector: 'Biotech & Genomics' },
+  { symbol: 'XBI', name: 'SPDR S&P Biotech ETF', sector: 'Biotech & Genomics' },
+  { symbol: 'ICLN', name: 'iShares Global Clean Energy', sector: 'Clean Energy' },
+  { symbol: 'TAN', name: 'Invesco Solar ETF', sector: 'Clean Energy' },
+  { symbol: 'KWEB', name: 'KraneShares CSI China Internet', sector: 'Emerging Markets Tech' },
+  { symbol: 'VGT', name: 'Vanguard Information Tech ETF', sector: 'Technology' },
+  { symbol: 'IGV', name: 'iShares Expanded Tech-Software', sector: 'Software' }
 ];
 var etfData = {};
 var chartInstances = {};
+var ALLOC_COLORS = [
+  '#3b82f6','#06b6d4','#8b5cf6','#10b981','#f59e0b',
+  '#ef4444','#ec4899','#14b8a6','#f97316','#6366f1',
+  '#84cc16','#0ea5e9','#a855f7','#22d3ee'
+];
+
+var SIGNAL_LABELS = { buy: 'קנייה', sell: 'מכירה', hold: 'המתנה' };
+var RISK_LABELS = { conservative: 'שמרני', moderate: 'מאוזן', aggressive: 'אגרסיבי' };
 
 document.addEventListener('DOMContentLoaded', function() {
   setHeaderDate();
   loadDashboard();
   document.getElementById('refreshBtn').addEventListener('click', loadDashboard);
   document.getElementById('aiAnalysisBtn').addEventListener('click', generateAIAnalysis);
+  document.getElementById('allocationBtn').addEventListener('click', generateAllocation);
 });
 
 function setHeaderDate() {
-  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+  document.getElementById('headerDate').textContent = new Date().toLocaleDateString('he-IL', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
 }
 
 async function loadDashboard() {
@@ -47,7 +58,7 @@ async function loadDashboard() {
     renderCards(); renderSummary(); renderCharts();
   } catch (err) {
     console.error('Dashboard load error:', err);
-    document.getElementById('etfGrid').innerHTML = '<div class="error-card">Failed to load ETF data. Make sure the server is running.</div>';
+    document.getElementById('etfGrid').innerHTML = '<div class="error-card">שגיאה בטעינת נתוני ETF. ודאו שהשרת פועל.</div>';
   } finally { overlay.classList.add('hidden'); refreshBtn.classList.remove('spinning'); }
 }
 
@@ -63,8 +74,8 @@ async function checkMarketStatus() {
     var data = await res.json();
     var dot = document.querySelector('#marketStatus .status-dot');
     var text = document.querySelector('#marketStatus .status-text');
-    if (data.isOpen) { dot.className = 'status-dot open'; text.textContent = 'Market Open'; }
-    else { dot.className = 'status-dot closed'; text.textContent = 'Market Closed'; }
+    if (data.isOpen) { dot.className = 'status-dot open'; text.textContent = 'השוק פתוח'; }
+    else { dot.className = 'status-dot closed'; text.textContent = 'השוק סגור'; }
   } catch (e) {}
 }
 
@@ -85,18 +96,19 @@ function renderCards() {
     var chgCls = d.dp >= 0 ? 'positive' : 'negative';
     var chgSign = d.dp >= 0 ? '+' : '';
     var sig = d.signal || 'hold';
+    var sigLabel = SIGNAL_LABELS[sig] || sig;
     var card = document.createElement('div');
     card.className = 'etf-card signal-' + sig;
     card.innerHTML =
-      '<div class="etf-card-header"><div><div class="etf-symbol">' + d.symbol + '</div><div class="etf-name">' + d.name + '</div></div><span class="signal-badge ' + sig + '">' + sig + '</span></div>' +
-      '<div class="etf-price-row"><span class="etf-price">$' + (d.c ? d.c.toFixed(2) : '--') + '</span><span class="etf-change ' + chgCls + '">' + chgSign + (d.dp ? d.dp.toFixed(2) : '0.00') + '%</span></div>' +
+      '<div class="etf-card-header"><div><div class="etf-symbol">' + d.symbol + '</div><div class="etf-name">' + d.name + '</div></div><span class="signal-badge ' + sig + '">' + sigLabel + '</span></div>' +
+      '<div class="etf-price-row"><span class="etf-change ' + chgCls + '">' + chgSign + (d.dp ? d.dp.toFixed(2) : '0.00') + '%</span><span class="etf-price">$' + (d.c ? d.c.toFixed(2) : '--') + '</span></div>' +
       '<div class="etf-details">' +
-      '<div class="etf-detail"><span class="etf-detail-label">Open</span><span class="etf-detail-value">$' + (d.o ? d.o.toFixed(2) : '--') + '</span></div>' +
-      '<div class="etf-detail"><span class="etf-detail-label">High</span><span class="etf-detail-value">$' + (d.h ? d.h.toFixed(2) : '--') + '</span></div>' +
-      '<div class="etf-detail"><span class="etf-detail-label">Low</span><span class="etf-detail-value">$' + (d.l ? d.l.toFixed(2) : '--') + '</span></div>' +
-      '<div class="etf-detail"><span class="etf-detail-label">Prev Close</span><span class="etf-detail-value">$' + (d.pc ? d.pc.toFixed(2) : '--') + '</span></div>' +
-      '<div class="etf-detail"><span class="etf-detail-label">Sector</span><span class="etf-detail-value">' + d.sector + '</span></div>' +
-      '<div class="etf-detail"><span class="etf-detail-label">Change $</span><span class="etf-detail-value" style="color:var(--color-' + (d.d >= 0 ? 'buy' : 'sell') + ')">' + (d.d >= 0 ? '+' : '') + (d.d ? d.d.toFixed(2) : '0.00') + '</span></div></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">פתיחה</span><span class="etf-detail-value">$' + (d.o ? d.o.toFixed(2) : '--') + '</span></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">גבוה</span><span class="etf-detail-value">$' + (d.h ? d.h.toFixed(2) : '--') + '</span></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">נמוך</span><span class="etf-detail-value">$' + (d.l ? d.l.toFixed(2) : '--') + '</span></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">סגירה קודמת</span><span class="etf-detail-value">$' + (d.pc ? d.pc.toFixed(2) : '--') + '</span></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">סקטור</span><span class="etf-detail-value">' + d.sector + '</span></div>' +
+      '<div class="etf-detail"><span class="etf-detail-label">שינוי $</span><span class="etf-detail-value" style="color:var(--color-' + (d.d >= 0 ? 'buy' : 'sell') + ')">' + (d.d >= 0 ? '+' : '') + (d.d ? d.d.toFixed(2) : '0.00') + '</span></div></div>' +
       '<div class="etf-card-chart"><canvas id="miniChart-' + d.symbol + '" height="80"></canvas></div>';
     grid.appendChild(card);
     renderMiniChart(d.symbol, d);
@@ -152,7 +164,7 @@ function renderSectorChart() {
   var labs=Object.keys(m), data=labs.map(function(s){var v=m[s];return +(v.reduce(function(a,b){return a+b;},0)/v.length).toFixed(2);});
   var cols=data.map(function(v){return v>=0?'rgba(16,185,129,0.7)':'rgba(239,68,68,0.7)';});
   chartInstances.sector = new Chart(c, {
-    type:'bar', data:{labels:labs,datasets:[{label:'Avg Change %',data:data,backgroundColor:cols,borderRadius:6}]},
+    type:'bar', data:{labels:labs,datasets:[{label:'שינוי ממוצע %',data:data,backgroundColor:cols,borderRadius:6}]},
     options:{responsive:true,plugins:{legend:{display:false}},scales:{y:{grid:{color:'rgba(30,58,95,0.3)'},ticks:{color:'#8899aa',callback:function(v){return v+'%';}}},x:{grid:{display:false},ticks:{color:'#8899aa',font:{size:11}}}}}
   });
 }
@@ -164,15 +176,15 @@ function renderChangeChart() {
   var labs=sorted.map(function(e){return e.symbol;}), data=sorted.map(function(e){return e.dp||0;});
   var cols=data.map(function(v){return v>=0?'rgba(16,185,129,0.7)':'rgba(239,68,68,0.7)';});
   chartInstances.change = new Chart(c, {
-    type:'bar', data:{labels:labs,datasets:[{label:'Daily Change %',data:data,backgroundColor:cols,borderRadius:6}]},
+    type:'bar', data:{labels:labs,datasets:[{label:'שינוי יומי %',data:data,backgroundColor:cols,borderRadius:6}]},
     options:{indexAxis:'y',responsive:true,plugins:{legend:{display:false}},scales:{x:{grid:{color:'rgba(30,58,95,0.3)'},ticks:{color:'#8899aa',callback:function(v){return v+'%';}}},y:{grid:{display:false},ticks:{color:'#8899aa',font:{weight:'bold'}}}}}
   });
 }
 
 async function generateAIAnalysis() {
   var btn=document.getElementById('aiAnalysisBtn'), content=document.getElementById('aiContent');
-  btn.disabled=true; btn.textContent='Analyzing...';
-  content.innerHTML='<div class="ai-loading"><div class="spinner-sm"></div> Generating AI analysis...</div>';
+  btn.disabled=true; btn.textContent='מנתח...';
+  content.innerHTML='<div class="ai-loading"><div class="spinner-sm"></div> מייצר ניתוח AI...</div>';
   var summary=Object.values(etfData).filter(function(e){return !e.error;}).map(function(e){
     return {symbol:e.symbol,name:e.name,sector:e.sector,price:e.c,changePercent:e.dp,changeDollar:e.d,open:e.o,high:e.h,low:e.l,prevClose:e.pc,signal:e.signal};
   });
@@ -182,11 +194,94 @@ async function generateAIAnalysis() {
     var data=await res.json();
     content.innerHTML=formatAI(data.analysis);
   } catch(err) {
-    content.innerHTML='<div class="error-card">Failed to generate AI analysis. Check server and ANTHROPIC_API_KEY.</div>';
-  } finally { btn.disabled=false; btn.textContent='Generate Analysis'; }
+    content.innerHTML='<div class="error-card">שגיאה בייצור ניתוח AI. בדקו את השרת ומפתח ANTHROPIC_API_KEY.</div>';
+  } finally { btn.disabled=false; btn.textContent='הפק ניתוח'; }
+}
+
+async function generateAllocation() {
+  var btn=document.getElementById('allocationBtn');
+  var tableWrap=document.getElementById('allocationTableWrap');
+  var summaryEl=document.getElementById('allocationSummary');
+  btn.disabled=true; btn.textContent='מחשב...';
+  tableWrap.innerHTML='<div class="ai-loading"><div class="spinner-sm"></div> מייצר חלוקת השקעה מומלצת...</div>';
+  summaryEl.innerHTML='';
+
+  var summary=Object.values(etfData).filter(function(e){return !e.error;}).map(function(e){
+    return {symbol:e.symbol,name:e.name,sector:e.sector,price:e.c,changePercent:e.dp,signal:e.signal};
+  });
+
+  try {
+    var res=await fetch(API_BASE+'/api/ai/portfolio-allocation',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({etfs:summary})});
+    if (!res.ok) throw new Error('HTTP '+res.status);
+    var data=await res.json();
+    renderAllocationChart(data.allocation);
+    renderAllocationTable(data.allocation, data.riskLevel, data.summary);
+  } catch(err) {
+    tableWrap.innerHTML='<div class="error-card">שגיאה בייצור חלוקת השקעה. בדקו את השרת ומפתח ANTHROPIC_API_KEY.</div>';
+  } finally { btn.disabled=false; btn.textContent='צור חלוקה'; }
+}
+
+function renderAllocationChart(allocation) {
+  if (chartInstances.allocation) chartInstances.allocation.destroy();
+  var canvas = document.getElementById('allocationChart');
+  var sorted = allocation.slice().sort(function(a,b){ return b.percentage - a.percentage; });
+  chartInstances.allocation = new Chart(canvas, {
+    type: 'doughnut',
+    data: {
+      labels: sorted.map(function(a){ return a.symbol + ' (' + a.percentage + '%)'; }),
+      datasets: [{
+        data: sorted.map(function(a){ return a.percentage; }),
+        backgroundColor: sorted.map(function(_, i){ return ALLOC_COLORS[i % ALLOC_COLORS.length]; }),
+        borderColor: '#0a0e17',
+        borderWidth: 2
+      }]
+    },
+    options: {
+      responsive: true,
+      cutout: '60%',
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            label: function(ctx) { return ctx.label + ' - ' + ctx.parsed + '%'; }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderAllocationTable(allocation, riskLevel, summary) {
+  var badge = document.getElementById('riskBadge');
+  badge.textContent = RISK_LABELS[riskLevel] || riskLevel;
+  badge.className = 'risk-badge ' + (riskLevel || '');
+
+  var sorted = allocation.slice().sort(function(a,b){ return b.percentage - a.percentage; });
+  var html = '<table class="allocation-table"><thead><tr>' +
+    '<th>תעודה</th><th>סקטור</th><th>הקצאה</th><th>נימוק</th>' +
+    '</tr></thead><tbody>';
+
+  sorted.forEach(function(a, i) {
+    var color = ALLOC_COLORS[i % ALLOC_COLORS.length];
+    html += '<tr>' +
+      '<td><span class="alloc-color-dot" style="background:' + color + '"></span><strong>' + a.symbol + '</strong></td>' +
+      '<td>' + (a.sector || getETFSector(a.symbol)) + '</td>' +
+      '<td><span class="alloc-pct">' + a.percentage + '%</span></td>' +
+      '<td><span class="alloc-rationale">' + (a.rationale || '') + '</span></td>' +
+      '</tr>';
+  });
+
+  html += '</tbody></table>';
+  document.getElementById('allocationTableWrap').innerHTML = html;
+  document.getElementById('allocationSummary').innerHTML = summary ? '<strong>סיכום אסטרטגיה:</strong> ' + summary : '';
+}
+
+function getETFSector(symbol) {
+  var etf = ETF_LIST.find(function(e){ return e.symbol === symbol; });
+  return etf ? etf.sector : '';
 }
 
 function formatAI(t) {
-  if (!t) return '<p class="ai-placeholder">No analysis available.</p>';
+  if (!t) return '<p class="ai-placeholder">אין ניתוח זמין.</p>';
   return '<div>'+t.replace(/### (.+)/g,'<h4>$1</h4>').replace(/## (.+)/g,'<h4>$1</h4>').replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>').replace(/^- (.+)$/gm,'<li>$1</li>').replace(/\n/g,'<br>')+'</div>';
 }

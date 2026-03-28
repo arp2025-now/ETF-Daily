@@ -1,4 +1,4 @@
-require('dotenv').config();
+require('dotenv').config({ override: true });
 var express = require('express');
 var cors = require('cors');
 var https = require('https');

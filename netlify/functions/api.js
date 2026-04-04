@@ -74,11 +74,25 @@ exports.handler = async function(event) {
     if (candleMatch && event.httpMethod === 'GET') {
       var sym = candleMatch[1];
       var qs = event.queryStringParameters || {};
-      var resolution = qs.resolution || 'D';
-      var to = qs.to || Math.floor(Date.now()/1000);
-      var from = qs.from || (to - 30*86400);
-      var r = await httpsReq('GET', fUrl('/stock/candle?symbol='+sym+'&resolution='+resolution+'&from='+from+'&to='+to));
-      return { statusCode: r.status, headers: headers, body: JSON.stringify(r.data) };
+      var period = qs.period || 'weekly';
+      var range = period === 'monthly' ? '1mo' : '5d';
+      var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + sym + '?interval=1d&range=' + range;
+      var r = await httpsReq('GET', url, null, {
+        'User-Agent': 'Mozilla/5.0',
+        'Accept': 'application/json'
+      });
+      if (r.status !== 200) return { statusCode: r.status, headers: headers, body: JSON.stringify({error:'Yahoo Finance error'}) };
+      var result = r.data.chart && r.data.chart.result && r.data.chart.result[0];
+      if (!result || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) {
+        return { statusCode: 404, headers: headers, body: JSON.stringify({error:'No data', s:'no_data'}) };
+      }
+      var q = result.indicators.quote[0];
+      var closes = (q.close||[]).filter(function(v){return v!=null;});
+      var opens  = (q.open ||[]).filter(function(v){return v!=null;});
+      var highs  = (q.high ||[]).filter(function(v){return v!=null;});
+      var lows   = (q.low  ||[]).filter(function(v){return v!=null;});
+      if (!closes.length) return { statusCode: 404, headers: headers, body: JSON.stringify({error:'No data', s:'no_data'}) };
+      return { statusCode: 200, headers: headers, body: JSON.stringify({ s:'ok', c:closes, o:opens, h:highs, l:lows }) };
     }
 
     // POST /api/ai/recommendation

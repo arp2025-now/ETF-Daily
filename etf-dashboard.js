@@ -50,13 +50,8 @@ function setHeaderDate() {
 }
 
 function getPeriodParams() {
-  var now = Math.floor(Date.now() / 1000);
-  var todayMidnight = Math.floor(new Date().setHours(0,0,0,0) / 1000);
-  if (currentPeriod === 'weekly') {
-    return { from: todayMidnight - 7 * 86400, to: todayMidnight, resolution: 'D', days: 7 };
-  } else if (currentPeriod === 'monthly') {
-    return { from: todayMidnight - 30 * 86400, to: todayMidnight, resolution: 'D', days: 30 };
-  }
+  if (currentPeriod === 'weekly') return { period: 'weekly' };
+  if (currentPeriod === 'monthly') return { period: 'monthly' };
   return null;
 }
 
@@ -109,7 +104,7 @@ async function fetchETFQuote(symbol) {
 }
 
 async function fetchETFCandles(symbol, params) {
-  var url = API_BASE + '/api/etf/' + symbol + '/candles?resolution=' + params.resolution + '&from=' + params.from + '&to=' + params.to;
+  var url = API_BASE + '/api/etf/' + symbol + '/candles?period=' + params.period;
   var res = await fetch(url);
   if (!res.ok) throw new Error('HTTP ' + res.status);
   var data = await res.json();

@@ -52,12 +52,26 @@ app.get('/api/etf/:symbol/quote', async function(req, res) {
 app.get('/api/etf/:symbol/candles', async function(req, res) {
   try {
     var sym = req.params.symbol.toUpperCase();
-    var resolution = req.query.resolution || 'D';
-    var to = req.query.to || Math.floor(Date.now()/1000);
-    var from = req.query.from || (to - 30*86400);
-    var r = await httpsReq('GET', fUrl('/stock/candle?symbol='+sym+'&resolution='+resolution+'&from='+from+'&to='+to));
-    if (r.status !== 200) return res.status(r.status).json({error:'Finnhub error'});
-    res.json(r.data);
+    var period = req.query.period || 'weekly';
+    var range = period === 'monthly' ? '1mo' : '5d';
+    var url = 'https://query1.finance.yahoo.com/v8/finance/chart/' + sym + '?interval=1d&range=' + range;
+    var r = await httpsReq('GET', url, null, {
+      'User-Agent': 'Mozilla/5.0',
+      'Accept': 'application/json'
+    });
+    if (r.status !== 200) return res.status(r.status).json({error:'Yahoo Finance error'});
+    var result = r.data.chart && r.data.chart.result && r.data.chart.result[0];
+    if (!result || !result.indicators || !result.indicators.quote || !result.indicators.quote[0]) {
+      return res.status(404).json({error:'No data', s:'no_data'});
+    }
+    var q = result.indicators.quote[0];
+    var closes = q.close, opens = q.open, highs = q.high, lows = q.low;
+    closes = closes.filter(function(v){return v!=null;});
+    opens = opens.filter(function(v){return v!=null;});
+    highs = highs.filter(function(v){return v!=null;});
+    lows = lows.filter(function(v){return v!=null;});
+    if (!closes.length) return res.status(404).json({error:'No data', s:'no_data'});
+    res.json({ s:'ok', c:closes, o:opens, h:highs, l:lows });
   } catch(e) { res.status(500).json({error:e.message}); }
 });
 

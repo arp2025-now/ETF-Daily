@@ -94,13 +94,15 @@ app.post('/api/ai/recommendation', async function(req, res) {
 app.post('/api/ai/market-analysis', async function(req, res) {
   try {
     var etfs = req.body.etfs;
+    var period = req.body.period || 'daily';
+    var periodHeb = {daily:'יומי',weekly:'שבוע אחרון',monthly:'חודש אחרון'}[period] || 'יומי';
     var today = new Date().toISOString().split('T')[0];
     var summary = etfs.map(function(e) {
       return e.symbol+' ('+e.sector+'): $'+(e.price?e.price.toFixed(2):'N/A')+' | '+(e.changePercent>=0?'+':'')+(e.changePercent?e.changePercent.toFixed(2):'0.00')+'% | '+e.signal;
     }).join('\n');
     var text = await claude(
-      'You are a senior market strategist. Write your analysis in Hebrew. Analyze ETF data with: 1) סנטימנט שוק 2) פירוט סקטורים 3) בחירות מובילות 4) גורמי סיכון 5) סיכום. Use ### headers and bullets. Under 500 words. Date: '+today,
-      'ETF Data:\n'+summary+'\n\nProvide daily market analysis in Hebrew.'
+      'You are a senior market strategist. Write your analysis in Hebrew. The data shows performance for the period: '+periodHeb+'. Analyze ETF data with: 1) סנטימנט שוק 2) פירוט סקטורים 3) בחירות מובילות 4) גורמי סיכון 5) סיכום. Use ### headers and bullets. Under 500 words. Date: '+today,
+      'ETF Data ('+periodHeb+'):\n'+summary+'\n\nProvide market analysis in Hebrew for the '+periodHeb+' period.'
     );
     res.json({analysis:text});
   } catch(e) { res.status(500).json({error:e.message}); }
@@ -109,6 +111,8 @@ app.post('/api/ai/market-analysis', async function(req, res) {
 app.post('/api/ai/portfolio-allocation', async function(req, res) {
   try {
     var etfs = req.body.etfs;
+    var period = req.body.period || 'daily';
+    var periodHeb = {daily:'יומי',weekly:'שבוע אחרון',monthly:'חודש אחרון'}[period] || 'יומי';
     var summary = etfs.map(function(e) {
       return e.symbol+' ('+e.sector+'): $'+(e.price?e.price.toFixed(2):'N/A')+' | '+(e.changePercent>=0?'+':'')+(e.changePercent?e.changePercent.toFixed(2):'0.00')+'% | '+e.signal;
     }).join('\n');
